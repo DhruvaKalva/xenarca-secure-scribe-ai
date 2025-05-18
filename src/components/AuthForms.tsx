@@ -14,8 +14,13 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { X } from "lucide-react";
 
-export function AuthForms() {
+interface AuthFormsProps {
+  onClose?: () => void;
+}
+
+export function AuthForms({ onClose }: AuthFormsProps) {
   // Login state
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -70,7 +75,19 @@ export function AuthForms() {
   };
 
   return (
-    <Card className="w-[380px] mx-auto">
+    <Card className="w-full max-w-[380px] mx-auto relative backdrop-blur-sm bg-background/90 border-border/60 shadow-xl">
+      {onClose && (
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="absolute right-2 top-2" 
+          onClick={onClose}
+        >
+          <X size={18} />
+          <span className="sr-only">Close</span>
+        </Button>
+      )}
+      
       <CardHeader>
         <CardTitle className="text-center text-2xl">XENARCAI</CardTitle>
         <CardDescription className="text-center">

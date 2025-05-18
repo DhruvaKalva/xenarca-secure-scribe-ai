@@ -20,13 +20,18 @@ export interface ChatSession {
   updatedAt: number;
 }
 
+interface MessageOptions {
+  showReasoning?: boolean;
+  fileAttachments?: File[];
+}
+
 interface ChatContextType {
   currentSession: ChatSession | null;
   sessions: ChatSession[];
   isProcessing: boolean;
   setCurrentSession: (session: ChatSession | null) => void;
   createNewSession: () => void;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, options?: MessageOptions) => Promise<void>;
   deleteSession: (sessionId: string) => void;
   clearSessions: () => void;
 }
@@ -101,7 +106,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       }));
   };
 
-  const sendMessage = async (content: string) => {
+  const sendMessage = async (content: string, options: MessageOptions = {}) => {
     if (!content.trim()) return;
     
     let sessionToUse = currentSession;
@@ -141,10 +146,16 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       // Prepare conversation history for the LLM
       const conversationHistory = formatConversationHistory(sessionToUse.messages);
       
-      // Call the LLM service
+      // Call the LLM service with the reasoning option
       const llmResponse: LLMResponse = await llmService.generateResponse(
         content, 
-        conversationHistory
+        conversationHistory,
+        {
+          // Pass the showReasoning option to the LLM service
+          systemPrompt: options.showReasoning 
+            ? "You are XENARCAI, a helpful AI assistant. Please show your reasoning step by step before providing your final answer."
+            : undefined
+        }
       );
       
       // Add AI response
