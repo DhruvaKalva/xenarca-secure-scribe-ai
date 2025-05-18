@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { llmService, type LLMResponse } from '../services/llmService';
 
 export type MessageRole = 'user' | 'assistant' | 'system';
 
@@ -8,6 +9,7 @@ export interface Message {
   content: string;
   role: MessageRole;
   timestamp: number;
+  error?: boolean;
 }
 
 export interface ChatSession {
@@ -89,26 +91,14 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     return newSession;
   }, []);
 
-  const getAIResponse = async (userMessage: string): Promise<string> => {
-    // This is where you would normally call your AI API
-    // For demo purposes, we'll simulate a delay and return a mock response
-    
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-    
-    const responses = [
-      "I'm XENARCAI, a secure AI assistant. How can I help you today?",
-      "That's an interesting question. Let me think about that...",
-      "I'm designed to provide helpful, harmless, and honest responses.",
-      "I don't have personal opinions, but I can provide information on that topic.",
-      "I'm always learning and improving to better assist users like you.",
-      "My code is securely protected to prevent unauthorized access.",
-      "I process information quickly, but I don't store your personal data.",
-      "Great question! Let me explain that in more detail...",
-      "I'm programmed to respect privacy and confidentiality.",
-      "I can help with a wide range of topics. What else would you like to know?"
-    ];
-    
-    return responses[Math.floor(Math.random() * responses.length)];
+  // Convert chat history to format expected by LLM service
+  const formatConversationHistory = (messages: Message[]) => {
+    return messages
+      .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+      .map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
   };
 
   const sendMessage = async (content: string) => {
@@ -147,14 +137,23 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       
       // Process AI response
       setIsProcessing(true);
-      const aiResponseContent = await getAIResponse(content);
+      
+      // Prepare conversation history for the LLM
+      const conversationHistory = formatConversationHistory(sessionToUse.messages);
+      
+      // Call the LLM service
+      const llmResponse: LLMResponse = await llmService.generateResponse(
+        content, 
+        conversationHistory
+      );
       
       // Add AI response
       const aiResponse: Message = {
         id: generateId(),
-        content: aiResponseContent,
+        content: llmResponse.success ? llmResponse.content : llmResponse.error || "Sorry, I encountered an error processing your request.",
         role: 'assistant',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        error: !llmResponse.success
       };
       
       // Update session with AI response
@@ -174,6 +173,29 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       
     } catch (error) {
       console.error('Error processing message:', error);
+      
+      // Add error message if the try-catch fails
+      const errorMessage: Message = {
+        id: generateId(),
+        content: "Sorry, an unexpected error occurred. Please try again later.",
+        role: 'assistant',
+        timestamp: Date.now(),
+        error: true
+      };
+      
+      // Update session with error message
+      const errorSession = {
+        ...sessionToUse,
+        messages: [...sessionToUse.messages, errorMessage],
+        updatedAt: Date.now()
+      };
+      
+      setSessions(prevSessions => 
+        prevSessions.map(session => 
+          session.id === errorSession.id ? errorSession : session
+        )
+      );
+      setCurrentSession(errorSession);
     } finally {
       setIsProcessing(false);
     }

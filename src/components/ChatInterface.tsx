@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChat, type Message } from "@/context/ChatContext";
-import { Send } from "lucide-react";
+import { Send, AlertCircle } from "lucide-react";
 import { formatRelative } from "date-fns";
 
 export function ChatInterface() {
@@ -73,8 +73,12 @@ export function ChatInterface() {
                   }`}
                 >
                   {message.role !== "user" && (
-                    <Avatar className="h-8 w-8 bg-primary">
-                      <span className="text-xs font-bold">AI</span>
+                    <Avatar className={`h-8 w-8 ${message.error ? "bg-destructive" : "bg-primary"}`}>
+                      {message.error ? (
+                        <AlertCircle className="h-4 w-4 text-destructive-foreground" />
+                      ) : (
+                        <span className="text-xs font-bold">AI</span>
+                      )}
                     </Avatar>
                   )}
                   
@@ -83,6 +87,8 @@ export function ChatInterface() {
                       className={`rounded-lg px-4 py-2.5 ${
                         message.role === "user"
                           ? "bg-primary text-primary-foreground ml-auto"
+                          : message.error
+                          ? "bg-destructive/10 text-destructive border border-destructive/20"
                           : "bg-secondary text-secondary-foreground"
                       }`}
                     >
@@ -124,7 +130,7 @@ export function ChatInterface() {
               <div className="relative flex-1">
                 <textarea
                   ref={inputRef}
-                  className="chat-input min-h-[60px] max-h-[200px] resize-none pr-12"
+                  className="chat-input min-h-[60px] max-h-[200px] resize-none pr-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   placeholder="Message XENARCAI..."
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}

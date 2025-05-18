@@ -22,6 +22,37 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Simple mock user storage for demo
+const mockUserStorage = {
+  getUsers: (): Record<string, {name: string, password: string}> => {
+    try {
+      const users = localStorage.getItem('xenarcai_users');
+      return users ? JSON.parse(users) : {};
+    } catch (error) {
+      console.error('Failed to parse users data:', error);
+      return {};
+    }
+  },
+  
+  saveUser: (email: string, name: string, password: string) => {
+    try {
+      const users = mockUserStorage.getUsers();
+      users[email] = { name, password };
+      localStorage.setItem('xenarcai_users', JSON.stringify(users));
+    } catch (error) {
+      console.error('Failed to save user data:', error);
+    }
+  },
+  
+  validateUser: (email: string, password: string): { valid: boolean, name?: string } => {
+    const users = mockUserStorage.getUsers();
+    if (users[email] && users[email].password === password) {
+      return { valid: true, name: users[email].name };
+    }
+    return { valid: false };
+  }
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,12 +75,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsLoading(true);
       
       // Simulate API request
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 800));
       
-      // For demo purposes only - in a real app you would validate with an API
+      // Check against our mock storage
+      const validation = mockUserStorage.validateUser(email, password);
+      
+      if (!validation.valid) {
+        toast.error("Invalid email or password");
+        throw new Error("Invalid email or password");
+      }
+      
       const mockUser = {
         id: 'user-' + Math.random().toString(36).substr(2, 9),
-        name: email.split('@')[0],
+        name: validation.name || email.split('@')[0],
         email
       };
       
@@ -58,7 +96,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       toast.success("Successfully logged in");
     } catch (error) {
       console.error('Login failed:', error);
-      toast.error("Login failed. Please try again.");
       throw error;
     } finally {
       setIsLoading(false);
@@ -70,9 +107,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsLoading(true);
       
       // Simulate API request
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 800));
       
-      // For demo purposes only
+      // Check if user already exists
+      const users = mockUserStorage.getUsers();
+      if (users[email]) {
+        toast.error("An account with this email already exists");
+        throw new Error("Email already in use");
+      }
+      
+      // Save the new user
+      mockUserStorage.saveUser(email, name, password);
+      
+      // Create user session
       const mockUser = {
         id: 'user-' + Math.random().toString(36).substr(2, 9),
         name,
@@ -84,7 +131,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       toast.success("Account created successfully");
     } catch (error) {
       console.error('Signup failed:', error);
-      toast.error("Signup failed. Please try again.");
       throw error;
     } finally {
       setIsLoading(false);
@@ -96,7 +142,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsLoading(true);
       
       // Simulate API request
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       toast.error("Google authentication not implemented in this demo");
       // In a real implementation, we would redirect to Google OAuth
@@ -113,7 +159,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsLoading(true);
       
       // Simulate API request
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       toast.error("Microsoft authentication not implemented in this demo");
       // In a real implementation, we would redirect to Microsoft OAuth
